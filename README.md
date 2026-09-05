@@ -78,3 +78,13 @@ Runs on `http://localhost:3000`. Make sure the backend is running first.
 ## Tech stack
 
 FastAPI, Chroma, OpenAI SDK, Next.js, shadcn/ui, Tailwind
+
+## Branching strategy
+
+- `main`: production-ready, protected, only receives merges from `develop` via PR with passing CI
+- `develop`: integration branch for completed features
+- `feature/*`: one branch per feature, merged into `develop`
+- `docs/*`: documentation and cleanup work
+- `disaster-recovery`: mirrors the last known-good state of `main` at each tagged release, used as a rollback point if `main` ever needs to be restored
+
+Releases are tagged on `main` following semantic versioning (`v1.0.0`, `v1.1.0`, etc).
