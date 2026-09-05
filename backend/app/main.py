@@ -1,9 +1,10 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uuid
 
 from app.chunking import chunk_text
+from app.extraction import extract_text
 from app.vectorstore import add_chunks, query_chunks, clear_collection, list_documents, get_document_chunks, delete_document
 from app.llm import generate_answer
 
@@ -25,7 +26,12 @@ async def ingest(file: UploadFile = File(...), clear_existing: bool = False):
     if clear_existing:
         clear_collection()
     content = await file.read()
-    text = content.decode("utf-8", errors="ignore")
+    try:
+        text = extract_text(file.filename, content)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not text.strip():
+        raise HTTPException(status_code=400, detail="No extractable text found in this file")
     doc_id = str(uuid.uuid4())[:8]
     chunks = chunk_text(text)
     chunk_ids = add_chunks(doc_id, chunks)
