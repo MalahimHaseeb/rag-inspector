@@ -34,7 +34,10 @@ export async function ingestFile(file: File, signal?: AbortSignal): Promise<Inge
   const formData = new FormData();
   formData.append("file", file);
   const res = await fetch(`${API_URL}/ingest`, { method: "POST", body: formData, signal });
-  if (!res.ok) throw new Error("Ingest failed");
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || "Ingest failed");
+  }
   return res.json();
 }
 
