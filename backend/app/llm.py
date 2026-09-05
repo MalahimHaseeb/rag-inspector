@@ -2,7 +2,13 @@ import time
 from openai import OpenAI
 from app.config import settings
 
-client = OpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
+_client = None
+
+def get_client():
+    global _client
+    if _client is None:
+        _client = OpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
+    return _client
 
 def build_prompt(query: str, chunks: list):
     context = "\n\n".join([f"[{i+1}] {c['text']}" for i, c in enumerate(chunks)])
@@ -13,7 +19,7 @@ def build_prompt(query: str, chunks: list):
 def generate_answer(query: str, chunks: list):
     system_prompt, user_prompt = build_prompt(query, chunks)
     start = time.time()
-    response = client.chat.completions.create(
+    response = get_client().chat.completions.create(
         model=settings.openai_model,
         messages=[
             {"role": "system", "content": system_prompt},
