@@ -62,7 +62,17 @@ export function QueryPanel() {
           </TabsList>
 
           <TabsContent value="response" className="flex flex-col gap-3 mt-3">
-            <p className="text-sm leading-relaxed">{result.answer}</p>
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm leading-relaxed">{result.answer}</p>
+              <Badge
+                variant={result.grounding.grounded ? "secondary" : "outline"}
+                className={`shrink-0 font-mono text-xs ${
+                  !result.grounding.grounded ? "border-destructive text-destructive" : ""
+                }`}
+              >
+                {result.grounding.grounded ? "grounded" : "low overlap"} · {(result.grounding.overlap_ratio * 100).toFixed(0)}%
+              </Badge>
+            </div>
             <Separator />
             <div className="flex flex-wrap gap-4 text-xs text-muted-foreground font-mono">
               <span>model: {result.model}</span>

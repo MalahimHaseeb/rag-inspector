@@ -28,6 +28,7 @@ export interface QueryResponse {
   usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
   latency_ms: number;
   model: string;
+  grounding: { grounded: boolean; overlap_ratio: number };
 }
 
 export async function ingestFile(file: File, signal?: AbortSignal): Promise<IngestResponse> {

@@ -1,0 +1,14 @@
+[
+  {
+    "question": "What is the capital of France?",
+    "expected_keywords": ["Paris", "capital", "France"]
+  },
+  {
+    "question": "How does photosynthesis work?",
+    "expected_keywords": ["sunlight", "chlorophyll", "energy"]
+  },
+  {
+    "question": "What is the boiling point of water?",
+    "expected_keywords": ["100", "Celsius", "boiling"]
+  }
+]
