@@ -18,9 +18,9 @@ Next.js frontend  >  FastAPI backend  >  Chroma (local vector store)
 
 ## Features
 
-- Document ingestion with visible chunk boundaries and offsets
+- Document ingestion (`.txt`, `.md`, `.pdf`, `.docx`) with visible chunk boundaries and offsets
 - Multi-document store: see everything currently indexed, select a document to inspect its chunks, delete individual documents
-- Query with tabbed inspection: **Response** (answer, latency, token usage), **Retrieval** (matched chunks with similarity distance), **Prompt** (the exact system/user prompt sent to the model)
+- Query with tabbed inspection: **Response** (answer, groundedness score, latency, token usage), **Retrieval** (matched chunks with similarity distance), **Prompt** (the exact system/user prompt sent to the model)
 - Clear-on-demand or clear-on-ingest control over the vector store
 
 ## Setup
@@ -68,16 +68,34 @@ Runs on `http://localhost:3000`. Make sure the backend is running first.
 | Method | Route | Description |
 |---|---|---|
 | POST | `/ingest` | Upload a file, get back its chunks |
-| POST | `/query` | Run a query against the store, get retrieval + prompt + response |
+| POST | `/query` | Run a query against the store, get retrieval + prompt + response + grounding |
 | GET | `/documents` | List all documents currently in the store |
 | GET | `/documents/{doc_id}/chunks` | Get chunks for a specific document |
 | DELETE | `/documents/{doc_id}` | Remove a document from the store |
 | POST | `/clear` | Wipe the entire store |
 | GET | `/health` | Health check |
 
+## Guardrails
+
+Deterministic checks that run outside the model, not prompt instructions asking it to behave:
+
+- **Input validation**: file type allowlist, file size cap (20MB), empty file/query rejection, query length cap, `top_k` bounded to 1-20
+- **Output grounding check**: after the model answers, its vocabulary is checked against the retrieved chunks. A low-overlap answer (likely hallucinated or answered from the model's own training data instead of your document) is flagged in the response and surfaced as a badge in the UI, rather than silently passed through
+
+## Testing and evals
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+pytest -v                  # unit + API tests
+python evals/run_eval.py   # retrieval quality against a golden question set
+```
+
+Unit tests cover chunking, extraction, guardrails, and the API endpoints (the LLM call is mocked so tests run free and deterministically). The eval script is separate on purpose: it measures whether semantic search actually surfaces the right information for a known set of questions, not just whether the code runs without errors. Both run in CI on every PR.
+
 ## Tech stack
 
-FastAPI, Chroma, OpenAI SDK, Next.js, shadcn/ui, Tailwind
+FastAPI, Chroma, OpenAI SDK, Next.js, shadcn/ui, Tailwind, pytest
 
 ## Branching strategy
 

@@ -5,6 +5,7 @@ import uuid
 
 from app.chunking import chunk_text
 from app.extraction import extract_text
+from app.guardrails import validate_file, validate_query, validate_top_k, check_grounding
 from app.vectorstore import add_chunks, query_chunks, clear_collection, list_documents, get_document_chunks, delete_document
 from app.llm import generate_answer
 
@@ -26,6 +27,7 @@ async def ingest(file: UploadFile = File(...), clear_existing: bool = False):
     if clear_existing:
         clear_collection()
     content = await file.read()
+    validate_file(file.filename, content)
     try:
         text = extract_text(file.filename, content)
     except ValueError as e:
@@ -62,15 +64,19 @@ async def clear():
 
 @app.post("/query")
 async def query(request: QueryRequest):
+    validate_query(request.query)
+    validate_top_k(request.top_k)
     retrieved_chunks = query_chunks(request.query, request.top_k)
     result = generate_answer(request.query, retrieved_chunks)
+    grounding = check_grounding(result["answer"], retrieved_chunks)
     return {
         "retrieved_chunks": retrieved_chunks,
         "prompt": result["prompt"],
         "answer": result["answer"],
         "usage": result["usage"],
         "latency_ms": result["latency_ms"],
-        "model": result["model"]
+        "model": result["model"],
+        "grounding": grounding
     }
 
 @app.get("/health")
