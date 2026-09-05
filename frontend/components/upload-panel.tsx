@@ -35,7 +35,7 @@ export function UploadPanel({ onIngested }: UploadPanelProps) {
         toast("Upload cancelled");
       } else {
         setStatus("error");
-        toast.error("Couldn't reach the backend");
+        toast.error(err instanceof Error ? err.message : "Couldn't reach the backend");
       }
     } finally {
       abortRef.current = null;
@@ -85,7 +85,7 @@ export function UploadPanel({ onIngested }: UploadPanelProps) {
         <input
           ref={inputRef}
           type="file"
-          accept=".txt,.md"
+          accept=".txt,.md,.pdf,.docx"
           disabled={isLoading}
           className="hidden"
           onChange={(e) => {
