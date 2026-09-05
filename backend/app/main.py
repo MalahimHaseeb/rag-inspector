@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import uuid
 
 from app.chunking import chunk_text
-from app.vectorstore import add_chunks, query_chunks, clear_collection
+from app.vectorstore import add_chunks, query_chunks, clear_collection, list_documents, get_document_chunks, delete_document
 from app.llm import generate_answer
 
 app = FastAPI(title="RAG Inspector API")
@@ -21,7 +21,7 @@ class QueryRequest(BaseModel):
     top_k: int = 4
 
 @app.post("/ingest")
-async def ingest(file: UploadFile = File(...), clear_existing: bool = True):
+async def ingest(file: UploadFile = File(...), clear_existing: bool = False):
     if clear_existing:
         clear_collection()
     content = await file.read()
@@ -35,6 +35,19 @@ async def ingest(file: UploadFile = File(...), clear_existing: bool = True):
         "chunks": chunks,
         "chunk_ids": chunk_ids
     }
+
+@app.get("/documents")
+async def get_documents():
+    return {"documents": list_documents()}
+
+@app.get("/documents/{doc_id}/chunks")
+async def get_document_chunks_route(doc_id: str):
+    return {"chunks": get_document_chunks(doc_id)}
+
+@app.delete("/documents/{doc_id}")
+async def delete_document_route(doc_id: str):
+    delete_document(doc_id)
+    return {"status": "deleted", "doc_id": doc_id}
 
 @app.post("/clear")
 async def clear():

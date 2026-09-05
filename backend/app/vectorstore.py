@@ -14,6 +14,29 @@ def add_chunks(doc_id: str, chunks: list):
     collection.add(ids=ids, documents=documents, metadatas=metadatas)
     return ids
 
+def list_documents():
+    all_items = collection.get()
+    doc_map = {}
+    for metadata in all_items["metadatas"]:
+        doc_id = metadata["doc_id"]
+        doc_map[doc_id] = doc_map.get(doc_id, 0) + 1
+    return [{"doc_id": doc_id, "chunk_count": count} for doc_id, count in doc_map.items()]
+
+def get_document_chunks(doc_id: str):
+    results = collection.get(where={"doc_id": doc_id})
+    chunks = []
+    for i in range(len(results["ids"])):
+        chunks.append({
+            "text": results["documents"][i],
+            "start_offset": results["metadatas"][i]["start_offset"],
+            "end_offset": results["metadatas"][i]["end_offset"],
+            "length": len(results["documents"][i])
+        })
+    return chunks
+
+def delete_document(doc_id: str):
+    collection.delete(where={"doc_id": doc_id})
+
 def clear_collection():
     global collection
     client.delete_collection(name="documents")
