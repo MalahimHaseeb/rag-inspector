@@ -1,8 +1,8 @@
 from app.config import settings
 
 def chunk_text(text: str, chunk_size: int = None, overlap: int = None):
-    chunk_size = chunk_size or settings.chunk_size
-    overlap = overlap or settings.chunk_overlap
+    chunk_size = chunk_size if chunk_size is not None else settings.chunk_size
+    overlap = overlap if overlap is not None else settings.chunk_overlap
     chunks = []
     start = 0
     text_len = len(text)
