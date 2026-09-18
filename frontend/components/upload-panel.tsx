@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { UploadCloud, Trash2, Loader2, X } from "lucide-react";
+import { UploadCloud, Trash2, Loader2, X, CheckCircle2, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ingestFile, clearStore, type IngestResponse } from "@/lib/api";
 
 interface UploadPanelProps {
@@ -14,7 +15,8 @@ export function UploadPanel({ onIngested }: UploadPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
+  const [lastResult, setLastResult] = useState<IngestResponse | null>(null);
 
   const isLoading = status === "loading";
 
@@ -27,8 +29,10 @@ export function UploadPanel({ onIngested }: UploadPanelProps) {
     try {
       const result = await ingestFile(file, controller.signal);
       onIngested(result);
-      setStatus("idle");
-      toast.success(`Split into ${result.chunk_count} chunks`);
+      setLastResult(result);
+      setStatus("success");
+      toast.success(`${result.chunk_count} chunks created`);
+      setTimeout(() => setStatus("idle"), 3000);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
         setStatus("idle");
@@ -36,6 +40,7 @@ export function UploadPanel({ onIngested }: UploadPanelProps) {
       } else {
         setStatus("error");
         toast.error(err instanceof Error ? err.message : "Couldn't reach the backend");
+        setTimeout(() => setStatus("idle"), 3000);
       }
     } finally {
       abortRef.current = null;
@@ -78,8 +83,14 @@ export function UploadPanel({ onIngested }: UploadPanelProps) {
           if (file) handleFile(file);
         }}
         aria-busy={isLoading}
-        className={`border border-dashed border-border rounded-lg py-10 flex flex-col items-center gap-2 text-center transition-colors ${
-          isLoading ? "cursor-not-allowed" : "cursor-pointer hover:border-foreground/40"
+        className={`border-2 border-dashed rounded-lg py-10 flex flex-col items-center gap-2 text-center transition-all ${
+          status === "success"
+            ? "border-green-500/30 bg-green-500/5"
+            : status === "error"
+            ? "border-destructive/30 bg-destructive/5"
+            : isLoading
+            ? "border-foreground/20 cursor-not-allowed"
+            : "border-border cursor-pointer hover:border-foreground/40 hover:bg-accent/20"
         }`}
       >
         <input
@@ -96,7 +107,8 @@ export function UploadPanel({ onIngested }: UploadPanelProps) {
         {isLoading ? (
           <>
             <Loader2 className="size-5 text-muted-foreground animate-spin" />
-            <p className="text-sm text-muted-foreground">Chunking and embedding {fileName}...</p>
+            <p className="text-sm text-muted-foreground font-medium">Chunking and embedding...</p>
+            <p className="text-xs text-muted-foreground">{fileName}</p>
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -108,13 +120,35 @@ export function UploadPanel({ onIngested }: UploadPanelProps) {
               Cancel
             </button>
           </>
+        ) : status === "success" ? (
+          <>
+            <CheckCircle2 className="size-5 text-green-600" />
+            <p className="text-sm font-medium">Upload successful</p>
+            {lastResult && (
+              <Badge variant="secondary" className="text-xs">
+                {lastResult.chunk_count} chunks
+              </Badge>
+            )}
+          </>
+        ) : status === "error" ? (
+          <>
+            <AlertCircle className="size-5 text-destructive" />
+            <p className="text-sm font-medium text-destructive">Upload failed</p>
+            <p className="text-xs text-muted-foreground">Try again or check the backend</p>
+          </>
         ) : (
           <>
             <UploadCloud className="size-5 text-muted-foreground" />
             {fileName ? (
-              <p className="text-sm">{fileName}</p>
+              <>
+                <p className="text-sm font-medium">{fileName}</p>
+                <p className="text-xs text-muted-foreground">Drop to upload</p>
+              </>
             ) : (
-              <p className="text-sm text-muted-foreground">Drop a text file, or click to choose one</p>
+              <>
+                <p className="text-sm font-medium text-foreground">Drop a document here</p>
+                <p className="text-xs text-muted-foreground">Supports .txt, .md, .pdf, .docx</p>
+              </>
             )}
           </>
         )}
