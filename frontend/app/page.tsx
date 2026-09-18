@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { UploadPanel } from "@/components/upload-panel";
 import { ChunkViewer } from "@/components/chunk-viewer";
 import { QueryPanel } from "@/components/query-panel";
+import { ThemeChanger } from "@/components/theme-changer";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
+import { useTheme } from "next-themes";
 import { listDocuments, getDocumentChunks, type Chunk, type DocumentSummary } from "@/lib/api";
 import { DocumentList } from "@/components/document-list";
 
@@ -11,6 +14,13 @@ export default function Home() {
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [chunks, setChunks] = useState<Chunk[]>([]);
+  const { setTheme, theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  const queryInputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   async function refreshDocuments() {
     try {
@@ -34,18 +44,54 @@ export default function Home() {
     });
   }, []);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!mounted) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+
+      // Ctrl/Cmd + Shift + K: Toggle theme
+      if (isCtrlOrCmd && e.shiftKey && key === "k") {
+        e.preventDefault();
+        const newTheme = theme === "dark" ? "light" : "dark";
+        setTheme(newTheme);
+      }
+      // Ctrl/Cmd + K: Focus query input
+      else if (isCtrlOrCmd && key === "k" && !e.shiftKey) {
+        e.preventDefault();
+        queryInputRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mounted, theme, setTheme]);
+
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <div className="max-w-5xl mx-auto px-6 py-10 flex flex-col gap-8">
-        <div>
-          <h1 className="font-display text-2xl">RAG Inspector</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            See exactly what your retrieval pipeline sends the model, and why.
-          </p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 flex flex-col gap-8">
+        {/* Header */}
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="font-display text-3xl sm:text-4xl font-bold">RAG Inspector</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                See exactly what your retrieval pipeline sends the LLM, and why.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <ThemeChanger />
+              <KeyboardShortcuts />
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-          <div className="flex flex-col gap-6">
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column */}
+          <div className="lg:col-span-1 space-y-6">
             <UploadPanel
               onIngested={async (result) => {
                 if (result.doc_id) {
@@ -55,22 +101,27 @@ export default function Home() {
                 await refreshDocuments();
               }}
             />
-            <DocumentList
-              documents={documents}
-              activeDocId={activeDocId}
-              onSelect={selectDocument}
-              onDeleted={async (docId) => {
-                if (docId === activeDocId) {
-                  setActiveDocId(null);
-                  setChunks([]);
-                }
-                await refreshDocuments();
-              }}
-            />
-            <ChunkViewer chunks={chunks} docId={activeDocId} />
+            {documents.length > 0 && (
+              <DocumentList
+                documents={documents}
+                activeDocId={activeDocId}
+                onSelect={selectDocument}
+                onDeleted={async (docId) => {
+                  if (docId === activeDocId) {
+                    setActiveDocId(null);
+                    setChunks([]);
+                  }
+                  await refreshDocuments();
+                }}
+              />
+            )}
           </div>
 
-          <QueryPanel />
+          {/* Right Column */}
+          <div className="lg:col-span-2 space-y-6">
+            <ChunkViewer chunks={chunks} docId={activeDocId} />
+            <QueryPanel ref={queryInputRef} />
+          </div>
         </div>
       </div>
     </main>
